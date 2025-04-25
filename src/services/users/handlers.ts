@@ -32,15 +32,15 @@ export const getMyProfile = async (req: Request, res: Response) => {
 export const updateMyProfile = async (req: UpdateProfileRequest, res: Response) => {
   try {
     const userId = req.user.userId;
-    const validatedData = req.body; 
+    const validatedData = req.body;
 
     // Prevent clients from updating worker-specific fields & vice-versa
-  if (req.user.userType === 'Client') {
-    if (validatedData.bio !== undefined || validatedData.skillsSummary !== undefined) {
-      res.status(403).json({ message: "Clients cannot update worker-specific fields (bio, skills)." });
-      return;
+    if (req.user.userType === 'Client') {
+      if (validatedData.bio !== undefined || validatedData.skillsSummary !== undefined) {
+        res.status(403).json({ message: "Clients cannot update worker-specific fields (bio, skills)." });
+        return;
+      }
     }
-  }
     // Add other updatable fields (profile picture, etc.) as needed
 
     if (Object.keys(validatedData).length === 0) {
@@ -53,7 +53,7 @@ export const updateMyProfile = async (req: UpdateProfileRequest, res: Response) 
 
     const updatedUser = await db
       .update(users)
-      .set({...validatedData})
+      .set({ ...validatedData })
       .where(eq(users.userId, userId))
       .returning({ // Return updated fields, excluding sensitive ones
         userId: users.userId,
@@ -83,7 +83,7 @@ export const updateMyProfile = async (req: UpdateProfileRequest, res: Response) 
 };
 
 export const findNearbyWorkers = async (req: Request, res: Response) => {
-  const {data: validatedData, error: validationError } = findWorkersQuerySchema.safeParse(req.query);
+  const { data: validatedData, error: validationError } = findWorkersQuerySchema.safeParse(req.query);
 
   if (validationError) {
     res.status(400).json({ message: "Invalid query parameters", errors: validationError.errors });

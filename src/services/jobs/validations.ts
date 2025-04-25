@@ -4,8 +4,8 @@ import { z } from "zod";
 
 // Schema for creating a job (client_id will be added from req.user)
 export const createJobSchema = createInsertSchema(jobs, {
-  title: (schema) => schema.min(5, "Title must be at least 5 characters").max(255),
-  description: (schema) => schema.min(10, "Description must be at least 10 characters"),
+  title: (schema) => schema.min(5, { message: "Title must be at least 5 characters"}).max(255),
+  description: (schema) => schema.min(10, { message: "Description must be at least 10 characters"}),
 }).omit({
   jobId: true,
   clientId: true,

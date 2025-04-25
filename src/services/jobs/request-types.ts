@@ -1,5 +1,5 @@
 import type { Request } from "express";
-import type { CreateJobSchema, SelectJobSchema, UpdateJobSchema } from "./validations";
+import type { CreateJobSchema, UpdateJobSchema } from "./validations";
 
 export interface CreateJobRequest extends Request {
   body: CreateJobSchema;

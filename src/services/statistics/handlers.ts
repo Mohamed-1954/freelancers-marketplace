@@ -38,25 +38,21 @@ export const getMyStats = async (req: Request, res: Response) => {
             jobsCompleted: completedCount[0]?.value ?? 0,
             lastCalculated: new Date(),
         };
-
-        // Optionally: Upsert (Insert or Update) the calculated stats back into the worker_statistics table
+        
         try {
-            await db.insert(workerStatistics)
+            // Try to upsert stats in the database (create if not exists, update if exists)
+            stats = await db.insert(workerStatistics)
                 .values(calculatedStatsData)
                 .onConflictDoUpdate({
                     target: workerStatistics.workerId,
-                    set: {
-                        applicationsSubmitted: calculatedStatsData.applicationsSubmitted,
-                        applicationsAccepted: calculatedStatsData.applicationsAccepted,
-                        jobsCompleted: calculatedStatsData.jobsCompleted,
-                        lastCalculated: calculatedStatsData.lastCalculated,
-                    }
+                    set: calculatedStatsData
                 })
-                .returning(); // To confirm upsert
-            stats = calculatedStatsData; // Use the newly calculated/upserted data
-        } catch (upsertError) {
-            console.error(`Failed to upsert statistics for worker ${workerId}:`, upsertError);
-            // Fallback to returning calculated stats without saving if upsert fails
+                .returning()
+                .then(rows => rows[0]);
+                
+        } catch (error) {
+            console.error("Error upserting worker statistics:", error);
+            // Even if DB persistence fails, still return the calculated stats
             stats = calculatedStatsData;
         }
     }

@@ -1,14 +1,20 @@
 import { Router } from "express";
-import { signOut, refreshToken, signIn, signUp } from "./handlers";
+import { signIn, signUp, refreshToken, signOut } from "./handlers"; // Added handleRefreshToken, logout
+import { validateRequest } from "@/common/middlewares";
+import { signInSchema, signUpSchema } from "./validations";
 
 const router = Router();
 
-router.post("/sign-up", signUp);
+// POST /auth/signup - Register a new user
+router.post("/signup", validateRequest({ body: signUpSchema }), signUp);
 
-router.post("/sign-in", signIn);
+// POST /auth/signin - Log in a user
+router.post("/signin", validateRequest({ body: signInSchema }), signIn);
 
-router.post("/refresh-token", refreshToken);
+// GET /auth/refresh - Get a new access token using refresh token (from cookie)
+router.get("/refresh", refreshToken); // Added refresh route
 
-router.post("/sign-out", signOut);
+// POST /auth/signout - Log out a user (clear refresh token cookie and potentially DB entry)
+router.post("/signOut", signOut); // Added logout route
 
 export default router;

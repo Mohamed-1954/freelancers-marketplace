@@ -152,8 +152,9 @@ export const updateApplicationStatus = async (req: UpdateApplicationStatusReques
     // Prevent updating status if already accepted/rejected? Decide on state flow.
     // if (application.status === 'Accepted' || application.status === 'Rejected') { ... }
 
-    const updatedApplication = await db.update(applications)
-      .set({ status: status /*, updatedAt: new Date() */ })
+    const updatedApplication = await db
+      .update(applications)
+      .set({ status: status, updatedAt: new Date() })
       .where(eq(applications.applicationId, applicationId))
       .returning();
 
@@ -162,9 +163,27 @@ export const updateApplicationStatus = async (req: UpdateApplicationStatusReques
       return;
     }
 
-    // TODO: Potentially trigger notifications
+    // If worker application is accepted, potentially update job status to 'InProgress'
+    if (status === 'Accepted') {
+      await db.update(jobs)
+        .set({ status: 'InProgress' })
+        .where(eq(jobs.jobId, application.job.jobId));
 
-    res.status(200).json({ message: "Application status updated.", application: updatedApplication[0] });
+      // Optionally reject all other applications for this job
+      // await db.update(applications)
+      //   .set({ status: 'Rejected' })
+      //   .where(and(
+      //     eq(applications.jobId, application.job.jobId),
+      //     ne(applications.applicationId, applicationId)
+      //   ));
+    }
+
+    // TODO: Send notification to the worker about status change
+    
+    res.status(200).json({ 
+      message: `Application status updated to ${status}`, 
+      application: updatedApplication[0] 
+    });
 
   } catch (error) {
     console.error("Error updating application status:", error);

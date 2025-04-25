@@ -9,10 +9,14 @@ export interface ListConversationsRequest extends Request {
   // Add query params if filtering/pagination is needed for conversation list
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-export interface GetMessagesHttpRequest extends Request<{ conversationId: string }, any, any, GetMessagesQuerySchema> {
-  // The query property is now correctly typed via the generic
-  // The params property is now correctly typed via the generic
+export interface GetMessagesHttpRequest extends Request {
+  params: { 
+    conversationId: string 
+  };
+  query: {
+    cursor: string;
+    limit: string; 
+  } 
 }
 
 export interface MarkAsReadRequest extends Request {

@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import db from "@/db";
 import { applications } from "@/db/schemas";
-import { and, eq, or } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 // Checks if the logged-in user is the worker who submitted OR the client who owns the related job
 export const ensureApplicationViewer = async (req: Request, res: Response, next: NextFunction) => {

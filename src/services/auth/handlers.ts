@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import type { SignInRequest, SignUpRequest } from "./request-types";
 import { signInSchema, signUpSchema } from "./validations";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import db from "@/db";
 import { users } from "@/db/schemas";
 import { eq, sql } from "drizzle-orm";

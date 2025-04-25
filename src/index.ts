@@ -62,27 +62,29 @@ const API_PREFIX = "/api/v1";
 // Public route group (Auth)
 app.use(`${API_PREFIX}/auth`, authService);
 
-// Apply JWT authentication middleware for all subsequent routes
-app.use(ensureToken);
-
 // Protected route groups
-app.use(`${API_PREFIX}/users`, usersService);
-app.use(`${API_PREFIX}/jobs`, jobsService);
-app.use(`${API_PREFIX}/applications`, applicationsService);
-app.use(`${API_PREFIX}/chat`, chatService); // HTTP routes for chat history/listing
-app.use(`${API_PREFIX}/statistics`, statisticsService);
-
-// --- Catch-all for undefined API routes ---
-app.use(`${API_PREFIX}/*`, (req, res) => {
-  res.status(404).json({ message: "API route not found." });
-});
-
+app.use(`${API_PREFIX}/users`, ensureToken, usersService);
+app.use(`${API_PREFIX}/jobs`, ensureToken, jobsService);
+app.use(`${API_PREFIX}/applications`, ensureToken, applicationsService);
+app.use(`${API_PREFIX}/chat`, ensureToken, chatService);
+app.use(`${API_PREFIX}/statistics`, ensureToken, statisticsService);
 
 // --- Error Handling Middlewares (ORDER MATTERS) ---
 // 1. Handle Zod validation errors first
 app.use(validationErrorHandler);
 // 2. Handle all other errors (generic handler)
 app.use(centralizedErrorHandler);
+
+// --- Catch-all for undefined routes (LAST) ---
+// This middleware will handle any request that didn't match previous routes
+app.use((req, res, next) => {
+  if (req.path.startsWith(API_PREFIX)) {
+    res.status(404).json({ message: "API route not found." });
+  } else {
+    res.status(404).json({ message: "Resource not found." });
+  }
+});
+
 
 httpServer.listen(config.server.port, () => {
   console.log(`🚀 Server running in ${config.env} mode on port ${config.server.port}`);
@@ -108,6 +110,5 @@ process.on('SIGINT', () => {
     process.exit(0);
   });
 });
-
 
 export default app

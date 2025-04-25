@@ -6,7 +6,7 @@ import {
   updateJob,
   deleteJob,
 } from "./handlers";
-import { ensureClient, ensureWorker } from "../user/middlewares"; // Re-use middleware
+import { ensureClient } from "../users/middlewares"; // Re-use middleware
 import { validateRequest } from "@/common/middlewares";
 import { createJobSchema, jobIdParamSchema, selectJobSchema, updateJobSchema } from "./validations";
 import { ensureJobOwner } from "./middlewares"; // Specific middleware for job ownership
@@ -40,16 +40,16 @@ router.put(
   "/:jobId",
   ensureClient,
   validateRequest({ params: jobIdParamSchema, body: updateJobSchema }),
-  ensureJobOwner, 
+  ensureJobOwner,
   updateJob
 );
 
 // DELETE /jobs/:jobId - Cancel/Delete a job (Client only, owner only)
 router.delete(
   "/:jobId",
-  ensureClient, 
+  ensureClient,
   validateRequest({ params: jobIdParamSchema }),
-  ensureJobOwner, 
+  ensureJobOwner,
   deleteJob
 );
 

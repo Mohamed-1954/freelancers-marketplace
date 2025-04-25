@@ -1,8 +1,9 @@
 import type { Response } from "express";
 import type { ListConversationsRequest, GetMessagesHttpRequest, MarkAsReadRequest, CreateMessageHttpRequest } from "./request-types";
 import db from "@/db";
-import { conversations, conversationParticipants, messages, users } from "@/db/schemas/index";
-import { and, eq, or, sql, desc, lt } from "drizzle-orm";
+import { conversations, conversationParticipants, messages } from "@/db/schemas/index";
+import { and, eq, sql, desc, lt } from "drizzle-orm";
+import { getMessagesQuerySchema } from "./validations";
 
 // --- List User's Conversations ---
 export const listConversations = async (req: ListConversationsRequest, res: Response) => {
@@ -55,7 +56,14 @@ export const listConversations = async (req: ListConversationsRequest, res: Resp
 // --- Get Messages for a Conversation ---
 export const getMessages = async (req: GetMessagesHttpRequest, res: Response) => {
   const conversationId = req.params.conversationId; // Validated
-  const { limit, cursor } = req.query; // Validated
+
+  const { data, error } = getMessagesQuerySchema.safeParse(req.query);
+  if (error) {
+    res.status(400).json({ message: "Invalid query parameters", errors: error.issues });
+    return;
+  }
+
+  const { limit, cursor } = data; // Validated
   // User participation checked by ensureParticipant middleware
 
   const conditions = [eq(messages.conversationId, conversationId)];
