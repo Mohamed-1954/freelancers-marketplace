@@ -8,7 +8,7 @@
     "build": "tsup",
     "start": "node dist/index.js",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx src/db/migrate.ts",
+    "db:migrate": "drizzle-kit migrate",
     "db:seed": "src/db/seed.ts",
     "db:studio": "drizzle-kit studio",
     "lint": "biome check src/",

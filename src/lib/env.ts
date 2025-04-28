@@ -5,10 +5,9 @@ import { ZodError, z } from "zod";
 
 const EnvSchema = z.object({
     NODE_ENV: z.enum(["development", "production"]).default("development"),
-    PORT: z.coerce.number().optional(),
     SERVER_HOST: z.string().default("localhost"),
     SERVER_PORT: z.coerce.number().default(3000),
-    CORS_ORIGINS: z.string().default("http://localhost:3000"),
+    CORS_ORIGINS: z.string().default("http://localhost:5173"),
     DB_HOST: z.string(),
     DB_USER: z.string(),
     DB_PASSWORD: z.string(),

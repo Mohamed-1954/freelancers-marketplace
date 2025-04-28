@@ -57,12 +57,13 @@ export const signUp = async (req: SignUpRequest, res: Response) => {
 export const signIn = async (req: SignInRequest, res: Response) => {
   try {
     const cookies = req.cookies;
+    console.log(cookies)
+
     const { error, data: validatedData } = signInSchema.safeParse(req.body);
     if (error) {
       res.status(400).json({ message: "Error validating request body" });
       return;
     }
-
     const existingUser = await db.query.users.findFirst({
       where: eq(users.email, validatedData.email),
     });

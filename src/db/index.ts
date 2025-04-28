@@ -6,7 +6,13 @@ import pg from "pg";
 const { Pool } = pg;
 
 export const pool = new Pool({
-  connectionString: config.database.url,
+  host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT),
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,   // p@ssword works fine here
+  database: process.env.DB_NAME,
+  // connectionString: config.database.url,
+  ssl: config.env === "production" ? { rejectUnauthorized: false } : false,
 });
 
 pool.on('connect', () => {
@@ -20,7 +26,6 @@ pool.on('error', (err) => {
 
 export const db = drizzle(pool, {
   schema,
-  // Enable logger only in development
   logger: config.env === "development",
 });
 

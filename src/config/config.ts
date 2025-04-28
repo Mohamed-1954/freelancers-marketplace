@@ -3,9 +3,9 @@ import env from "@/lib/env";
 const config = {
   env: env.NODE_ENV,
   server: {
-    port: env.PORT || env.SERVER_PORT,
+    port: env.SERVER_PORT,
     host: env.NODE_ENV === "production" ? undefined : env.SERVER_HOST,
-    corsOrigins: env.CORS_ORIGINS.split(",").map((s) => s.trim()),
+    corsOrigins: env.CORS_ORIGINS,
   },
   database: {
     port: env.DB_PORT,
@@ -13,7 +13,7 @@ const config = {
     name: env.DB_NAME,
     username: env.DB_USER,
     password: env.DB_PASSWORD,
-    url: env.DB_URL.includes("?") ? env.DB_URL : `${env.DB_URL}?ssl=true`,
+    url: env.DB_URL,
   },
   jwt: {
     accessTokenSecret: env.JWT_ACCESS_SECRET,
