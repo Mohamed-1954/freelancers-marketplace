@@ -53,18 +53,20 @@ export const updateMyProfile = async (req: UpdateProfileRequest, res: Response) 
 
     const updatedUser = await db
       .update(users)
-      .set({ ...validatedData })
+      .set({ ...validatedData, updatedAt: new Date() }) // Explicitly set updatedAt
       .where(eq(users.userId, userId))
       .returning({ // Return updated fields, excluding sensitive ones
         userId: users.userId,
         username: users.username,
         email: users.email,
+        userType: users.userType, // *** ADDED userType ***
         profilePictureUrl: users.profilePictureUrl,
         phoneNumber: users.phoneNumber,
         country: users.country,
         city: users.city,
         bio: users.bio,
         skillsSummary: users.skillsSummary,
+        createdAt: users.createdAt, // Include createdAt if needed by User.fromJson
         updatedAt: users.updatedAt,
         //... other fields you want to return
       });
@@ -74,6 +76,7 @@ export const updateMyProfile = async (req: UpdateProfileRequest, res: Response) 
       return;
     }
 
+    // Ensure the response structure matches frontend expectations
     res.status(200).json({ message: "Profile updated successfully", user: updatedUser[0] });
 
   } catch (error) {

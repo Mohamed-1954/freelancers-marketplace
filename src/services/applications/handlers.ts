@@ -34,7 +34,7 @@ export const applyForJob = async (req: ApplyJobRequest, res: Response) => {
 
     res.status(201).json(newApplication[0]);
 
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   } catch (error: any) {
     // Catch potential unique violation error
     if (error.code === "23505") { // PostgreSQL unique violation code
@@ -59,7 +59,8 @@ export const listApplications = async (req: Request, res: Response) => {
       // Await the query directly and assign to applicationList
       applicationList = await db.query.applications.findMany({
         where: eq(applications.workerId, user.userId),
-        with: { job: { columns: { title: true, status: true } } }, // Include job info
+        // Include job title, status, and crucially the clientId
+        with: { job: { columns: { jobId: true, title: true, status: true, clientId: true } } }, // Added clientId
         orderBy: (apps, { desc }) => [desc(apps.submissionDate)],
       });
     } else if (user.userType === 'Client' && typeof jobId === 'string') {
@@ -84,10 +85,10 @@ export const listApplications = async (req: Request, res: Response) => {
     } else {
       // Handle cases where a client didn't provide a jobId or other invalid scenarios
       if (user.userType === 'Client') {
-          res.status(400).json({ message: "Clients must specify a valid jobId to list applications." });
+        res.status(400).json({ message: "Clients must specify a valid jobId to list applications." });
       } else {
-          // Potentially handle other user types or errors if necessary
-          res.status(400).json({ message: "Invalid request." });
+        // Potentially handle other user types or errors if necessary
+        res.status(400).json({ message: "Invalid request." });
       }
       return;
     }
@@ -179,10 +180,10 @@ export const updateApplicationStatus = async (req: UpdateApplicationStatusReques
     }
 
     // TODO: Send notification to the worker about status change
-    
-    res.status(200).json({ 
-      message: `Application status updated to ${status}`, 
-      application: updatedApplication[0] 
+
+    res.status(200).json({
+      message: `Application status updated to ${status}`,
+      application: updatedApplication[0]
     });
 
   } catch (error) {

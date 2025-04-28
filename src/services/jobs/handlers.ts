@@ -30,20 +30,12 @@ export const createJob = async (req: CreateJobRequest, res: Response) => {
 
 export const listJobs = async (req: SelectJobsRequest, res: Response) => {
   try {
-    // Use validated data from the middleware
-    // Zod validation is already done by validateRequest middleware
-    // The schema used was selectJobSchema
-    const validatedQuery = req.validatedData?.query;
-
-    // Add a check if validatedQuery is undefined (shouldn't happen if middleware ran)
-    if (!validatedQuery) {
-      console.error("Error: Validated query data not found in request.");
-      return res.status(500).json({ message: "Internal server error processing request." })
+    const { data: validatedData, error: validationError } = selectJobSchema.safeParse(req.query);
+    if (validationError) {
+      res.status(400).json({ message: "Invalid query parameters", errors: validationError.errors });
+      return;
     }
-
-    // Destructure directly from validatedQuery
-    const { clientId, status, search, limit, offset } = validatedQuery;
-
+    const { clientId, status, search, limit, offset } = validatedData; // Default values
     const conditions = [];
     if (status) {
       conditions.push(eq(jobs.status, status));
@@ -69,8 +61,14 @@ export const listJobs = async (req: SelectJobsRequest, res: Response) => {
         clientId: true,
         // description: true, // Maybe omit description for list view?
       },
-      with: { // Include client username AND ID for display/linking
-        client: { columns: { userId: true, username: true } }
+      with: { // Include client username for display
+        client: {
+          columns: {
+            userId: true, // Explicitly ensure userId is selected
+            username: true,
+            profilePictureUrl: true
+          }
+        }
       },
       limit: limit,
       offset: offset,

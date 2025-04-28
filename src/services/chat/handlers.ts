@@ -33,21 +33,40 @@ export const listConversations = async (req: ListConversationsRequest, res: Resp
 
   // Post-process to add an 'isUnread' flag and filter participants
   const processedConversations = userConversations.map(convo => {
+    // Explicitly type convo to help TypeScript understand the structure
     const typedConvo = convo as typeof convo & {
-        messages: { content: string; sentAt: Date; senderId: string; sender?: { username: string } }[];
-        participants: { userId: string; lastReadAt: Date | null; user: { userId: string; username: string; profilePictureUrl: string | null } }[];
+      messages: Array<{ content: string; sentAt: Date; senderId: string; sender?: { username: string } }>;
+      participants: Array<{ userId: string; lastReadAt: Date | null; user: { userId: string; username: string; profilePictureUrl: string | null } }>;
     };
+
     const lastMsg = typedConvo.messages?.[0];
     const currentUserParticipant = typedConvo.participants.find(p => p.userId === userId);
     const lastRead = currentUserParticipant?.lastReadAt;
+
+    // Determine unread status based on last message time vs last read time
     const isUnread = !!lastMsg && (!lastRead || new Date(lastMsg.sentAt) > new Date(lastRead));
+    // Calculate unread count (more complex, requires counting messages after lastRead - skip for now if isUnread flag is sufficient)
+    // For simplicity, we'll use the isUnread flag for now. A proper count needs another query or different logic.
+    const unreadCount = isUnread ? 1 : 0; // Simplified unread count
 
     const otherParticipants = typedConvo.participants
-        .filter(p => p.userId !== userId)
-        .map(p => ({ user: p.user })); // Shape the participant data as needed for the frontend
+      .filter(p => p.userId !== userId)
+      // Map to the structure expected by the frontend Conversation model
+      .map(p => p.user); // Directly map the user object
 
-    const { participants, ...rest } = typedConvo; // Destructure to remove original participants
-    return { ...rest, participants: otherParticipants, isUnread };
+    // Destructure to remove original participants and messages array
+    const { participants, messages: originalMessages, ...rest } = typedConvo;
+
+    // Construct the final object with the desired structure
+    return {
+      ...rest,
+      participants: otherParticipants, // Use the filtered/mapped participants
+      // Add lastMessage object matching frontend expectation
+      lastMessage: lastMsg ? { content: lastMsg.content, sentAt: lastMsg.sentAt } : null,
+      unreadCount: unreadCount, // Use the simplified unread count
+      // Optionally include job info if needed by frontend model
+      // job: { jobId: rest.jobId, title: 'Job Title Placeholder' } // Fetch actual job title if needed
+    };
   });
 
   res.status(200).json(processedConversations);

@@ -2,10 +2,18 @@ import type { Server, Socket } from 'socket.io';
 import { verifyJwt } from '../auth/utils/jwt';
 import config from '@/config/config';
 import db from "@/db";
-import { conversations, conversationParticipants, messages, users } from "@/db/schemas/index";
+import { conversations, conversationParticipants, messages, users, jobs, applications } from "@/db/schemas/index";
 import { and, eq, sql } from "drizzle-orm";
 import { requestUserSchema, type RequestUserSchema } from '../auth/validations';
-import { createMessageSchema } from './validations'; 
+import { createMessageSchema } from './validations';
+import { z } from 'zod';
+
+// Define a schema for the findOrCreateConversation payload
+const findOrCreateConversationSchema = z.object({
+  recipientId: z.string().uuid(),
+  jobId: z.string().uuid().optional().nullable(),
+  applicationId: z.string().uuid().optional().nullable(),
+});
 
 // Extend Socket type to include the authenticated user
 interface AuthenticatedSocket extends Socket {
@@ -35,12 +43,44 @@ async function findOrCreateConversation(senderId: string, recipientId: string, j
     return existingConvo[0].id;
   }
 
-  // Create a new conversation and add participants within a transaction
+  // --- Create New Conversation ---
   let conversationId: string | null = null;
+  let fetchedClientId: string | null = null;
+  let fetchedWorkerId: string | null = null; // Variable for workerId
+
+  // If jobId is provided, fetch the associated clientId
+  if (jobId) {
+    const job = await db.query.jobs.findFirst({
+      where: eq(jobs.jobId, jobId),
+      columns: { clientId: true }
+    });
+    if (!job?.clientId) {
+      throw new Error(`Cannot create conversation: Job ${jobId} not found or missing client ID.`);
+    }
+    fetchedClientId = job.clientId;
+  }
+
+  // If applicationId is provided, fetch the associated workerId
+  if (applicationId) {
+    const application = await db.query.applications.findFirst({
+      where: eq(applications.applicationId, applicationId),
+      columns: { workerId: true }
+    });
+    if (!application?.workerId) {
+      // Handle error: Application not found or missing workerId
+      throw new Error(`Cannot create conversation: Application ${applicationId} not found or missing worker ID.`);
+    }
+    fetchedWorkerId = application.workerId;
+  }
+
+  // Create conversation within a transaction
   await db.transaction(async (tx) => {
+    // Now include the fetchedClientId and fetchedWorkerId in the insert
     const [newConversation] = await tx.insert(conversations).values({
       jobId: jobId,
       applicationId: applicationId,
+      clientId: fetchedClientId,
+      workerId: fetchedWorkerId, // *** ADDED worker_id ***
     }).returning({ id: conversations.conversationId });
 
     if (!newConversation?.id) throw new Error("Failed to create conversation record.");
@@ -109,6 +149,52 @@ export function initializeSocketIO(io: Server) {
     authenticatedSocket.on('leaveRoom', (conversationId: string) => {
       console.log(`${authenticatedSocket.user.username} leaving room: ${conversationId}`);
       authenticatedSocket.leave(conversationId);
+    });
+
+    // --- Find or Create Conversation ---
+    authenticatedSocket.on('findOrCreateConversation', async (payload: unknown, callback: unknown) => {
+      if (typeof callback !== 'function') {
+        console.error("findOrCreateConversation: Invalid callback provided.");
+        return; // No ack possible
+      }
+
+      const validation = findOrCreateConversationSchema.safeParse(payload);
+      if (!validation.success) {
+        console.error("Invalid findOrCreateConversation payload:", validation.error);
+        callback({ status: "error", message: "Invalid payload", errors: validation.error.flatten().fieldErrors });
+        return;
+      }
+
+      const { recipientId, jobId, applicationId } = validation.data;
+      const senderId = authenticatedSocket.user.userId;
+
+      if (senderId === recipientId) {
+        callback({ status: "error", message: "Cannot create conversation with yourself" });
+        return;
+      }
+
+      try {
+        // Ensure recipient exists
+        const recipientExists = await db.query.users.findFirst({ where: eq(users.userId, recipientId), columns: { userId: true } });
+        if (!recipientExists) {
+          callback({ status: "error", message: "Recipient not found" });
+          return;
+        }
+
+        // Use the helper function
+        const conversationId = await findOrCreateConversation(senderId, recipientId, jobId, applicationId);
+
+        console.log(`[Socket] Conversation ${conversationId} ready for users ${senderId} and ${recipientId}`);
+        // Acknowledge success to sender
+        callback({ status: "ok", conversationId: conversationId });
+
+      } catch (error: unknown) {
+        console.error('Error handling findOrCreateConversation:', error);
+        const errorMessage = error instanceof Error ? error.message : "Server error processing request";
+        callback({ status: "error", message: errorMessage });
+        // Optionally emit a generic error event to the sender's socket
+        authenticatedSocket.emit('error', { message: 'Failed to find or create conversation.' });
+      }
     });
 
     // --- Send Message ---
