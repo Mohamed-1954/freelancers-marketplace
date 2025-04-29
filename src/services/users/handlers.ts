@@ -156,3 +156,49 @@ export const findSuggestedWorkers = async (req: Request, res: Response) => {
 
   res.status(200).json(suggestedWorkers);
 };
+
+// --- Handler for Deleting User Profile ---
+export const deleteMyProfile = async (req: Request, res: Response): Promise<void> => {
+  // Get user ID from the ensureAuthenticated middleware
+  const userId = req.user?.userId;
+
+  if (!userId) {
+    // This shouldn't happen if ensureAuthenticated works correctly
+    res.status(401).json({ message: "Authentication required." });
+    return;
+  }
+
+  console.log(`[Handler] Attempting to delete profile for userId: ${userId}`);
+
+  try {
+    // --- Database Deletion Logic ---
+    // Option 1: Hard Delete (Irreversible)
+    // await db.delete(users).where(eq(users.userId, userId));
+
+    // Option 2: Soft Delete (Recommended for safety)
+    const result = await db
+      .update(users)
+      .set({
+        isActive: false,
+        deletedAt: new Date(),
+      })
+      .where(eq(users.userId, userId))
+      .returning({ userId: users.userId });
+
+     if (result.length === 0) {
+        console.warn(`[Handler] User ${userId} not found for deletion or already inactive.`);
+        res.status(204).send(); // Send response and return
+        return;
+     }
+
+    // TODO: Implement cascading actions if necessary:
+
+    console.log(`User profile soft-deleted successfully for userId: ${userId}`);
+    res.status(204).send(); // Send response and return
+
+  } catch (error) {
+    console.error(`[Handler] Error deleting user profile for userId: ${userId}`, error);
+    // Handle error and send response
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
